@@ -139,6 +139,17 @@
 .troph span{font-size:12px;font-weight:800;color:#8a5a00;}
 .troph-empty{font-size:13px;color:#8a94a2;padding:0 12px 20px;}
 
+  /* クリア表示 */
+  .unit{position:relative;}
+  .unit.cleared{border-left-width:6px;background:linear-gradient(0deg,rgba(47,169,104,.08),rgba(47,169,104,.08));}
+  .clear-badge{position:absolute;top:8px;right:10px;background:#2fa968;color:#fff;font-size:12px;font-weight:900;padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:5px;box-shadow:0 2px 6px rgba(47,169,104,.35);}
+  .clear-badge .cb-cnt{background:rgba(255,255,255,.25);border-radius:10px;padding:1px 6px;font-size:11px;}
+  .kai-prog{margin-top:6px;font-size:13px;font-weight:800;color:#7a8390;}
+  .kai-prog.full{color:#2fa968;}
+  .kai-card.cleared{box-shadow:0 0 0 2px #2fa968 inset;}
+  .subj-prog{margin-top:6px;font-size:12px;font-weight:800;color:#9aa4b2;}
+  .subj-prog.full{color:#2fa968;}
+
   </style>
 </head>
 <body>
@@ -1631,7 +1642,8 @@ function buildSubjects(){
     const s=DATA[sk],n=s.kai.length;
     const b=document.createElement('button');b.className='subject-card '+sk;b.onclick=()=>chooseSubject(sk);
     const icon={shakai:'🌏',rika:'🔬',kokugo:'📖',naoshi_ru:'✏️',naoshi_ya:'🖊️'}[sk]||'📚';
-    b.innerHTML='<div class="ico">'+icon+'</div><div class="nm">'+s.label+'</div><div class="cnt">'+(n>0?('第'+s.kai[0].id+'回〜（'+n+'回）'):'準備中')+'</div>';
+    var _si=(n>0)?subjClearInfo(sk):{done:0,total:0}, _sf=_si.total>0&&_si.done===_si.total;
+    b.innerHTML='<div class="ico">'+icon+'</div><div class="nm">'+s.label+'</div><div class="cnt">'+(n>0?('第'+s.kai[0].id+'回〜（'+n+'回）'):'準備中')+'</div>'+((n>0&&_si.total)?'<div class="subj-prog'+(_sf?' full':'')+'">'+(_sf?'✓ ':'')+_si.done+' / '+_si.total+' 単元クリア</div>':'');
     if(n===0)b.classList.add('inactive');
     wrap.appendChild(b);
   });
@@ -1643,7 +1655,9 @@ function buildKai(){
   const wrap=document.getElementById('kaiGrid');wrap.innerHTML='';
   DATA[curSubject].kai.forEach(k=>{
     const b=document.createElement('button');b.className='kai-card';b.onclick=()=>chooseKai(k.id);
-    b.innerHTML='<div class="kai-no">第'+k.id+'回</div><div class="kai-ttl">'+k.title+'</div><div class="cnt">'+k.questions.length+'もん</div>';
+    var _ci=kaiClearInfo(curSubject,k), _full=_ci.total>0&&_ci.done===_ci.total;
+    b.innerHTML='<div class="kai-no">第'+k.id+'回</div><div class="kai-ttl">'+k.title+'</div><div class="cnt">'+k.questions.length+'もん</div>'+(_ci.total?'<div class="kai-prog'+(_full?' full':'')+'">'+(_full?'✓ ':'')+_ci.done+' / '+_ci.total+' 単元クリア</div>':'');
+    if(_full)b.classList.add('cleared');
     wrap.appendChild(b);
   });
   showScreen('kaiScreen');
@@ -1656,7 +1670,9 @@ function buildUnits(){
   Object.keys(k.units).forEach(u=>{
     const info=k.units[u];
     const b=document.createElement('button');b.className='unit';b.style.borderLeftColor=info.color;b.onclick=()=>start(u);
-    b.innerHTML='<div class="ico">'+info.icon+'</div><div><div class="nm">'+info.name+'</div><div class="cnt">'+unitCards(u).length+'もん</div></div>';
+    var _uk=curSubject+'|'+k.id+'|'+u, _uc=isUnitCleared(curSubject,k.id,u);
+    b.innerHTML='<div class="ico">'+info.icon+'</div><div><div class="nm">'+info.name+'</div><div class="cnt">'+unitCards(u).length+'もん</div></div>'+(_uc?'<div class="clear-badge">✓ クリア<span class="cb-cnt">★'+(clearCnt[_uk]||1)+'回</span></div>':'');
+    if(_uc)b.classList.add('cleared');
     grid.appendChild(b);
   });
   const all=document.createElement('button');all.className='unit all';all.onclick=()=>start('all');
@@ -1921,6 +1937,10 @@ function renderCollection(){
   if(trophies.length){ tw.innerHTML='<div class="coll-sub">🏆 トロフィー・メダル</div><div class="troph-row">'+trophies.map(t=>'<div class="troph">'+t.e+'<span>'+t.n+'</span></div>').join('')+'</div>'; }
   else{ tw.innerHTML='<div class="coll-sub">🏆 トロフィー・メダル</div><div class="troph-empty">まだありません。回の 全単元クリアや 収集数で もらえます。</div>'; }
 }
+function realUnits(k){return Object.keys(k.units||{}).filter(u=>(k.questions||[]).some(q=>q.u===u));}
+function isUnitCleared(sk,kid,u){return cleared.has(sk+'|'+kid+'|'+u);}
+function kaiClearInfo(sk,k){var us=realUnits(k);return {done:us.filter(u=>isUnitCleared(sk,k.id,u)).length,total:us.length};}
+function subjClearInfo(sk){var d=0,t=0;(DATA[sk].kai||[]).forEach(function(k){var us=realUnits(k);t+=us.length;d+=us.filter(u=>isUnitCleared(sk,k.id,u)).length;});return {done:d,total:t};}
 function initItems(){ loadItems(); }
 
 initItems();
